@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rap Battle Timer | Freestyle Tool</title>
+    <meta name="description" content="Ultimate Freestyle Rap Battle Timer & Word Generator">
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --panel-bg: #1a1a1a;
+            --text-main: #ffffff;
+            --text-dim: #888888;
+            --accent-primary: #00ff9d; /* Green neon */
+            --accent-secondary: #bd00ff; /* Purple neon */
+            --danger: #ff0055;
+            --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --font-display: 'Impact', 'Arial Black', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        header {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.8);
+            border-bottom: 1px solid #333;
+            z-index: 10;
+        }
+
+        h1 { font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; color: var(--accent-primary); }
+        
+        .top-controls { display: flex; gap: 15px; align-items: center; }
+        .icon-btn { background: none; border: none; color: var(--text-main); font-size: 1.2rem; cursor: pointer; transition: 0.2s; }
+        .icon-btn:hover { color: var(--accent-primary); }
+        .lang-switch { font-weight: bold; font-size: 0.9rem; border: 1px solid #333; padding: 2px 6px; border-radius: 4px; }
+
+        /* --- Main Stage (Word Display) --- */
+        #stage-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            position: relative;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+        }
+
+        #word-display {
+            font-family: var(--font-display);
+            font-size: 4rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(0, 255, 157, 0.3);
+            line-height: 1;
+            margin-bottom: 10px;
+            transition: transform 0.1s;
+        }
+
+        #word-meta { color: var(--text-dim); font-size: 1rem; letter-spacing: 1px; margin-top: 10px; }
+
+        /* --- Mode Selector --- */
+        #mode-selector {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 15px;
+            background: #111;
+            white-space: nowrap;
+            scrollbar-width: none; 
+        }
+        #mode-selector::-webkit-scrollbar { display: none; }
+
+        .mode-btn {
+            background: #222;
+            border: 1px solid #333;
+            color: #aaa;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .mode-btn.active {
+            background: var(--accent-secondary);
+            color: white;
+            border-color: var(--accent-secondary);
+            box-shadow: 0 0 10px rgba(189, 0, 255, 0.4);
+        }
+
+        /* --- Timer & MC Section --- */
+        #battle-area {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            background: #151515;
+            padding: 20px 10px;
+            align-items: center;
+            border-top: 1px solid #333;
+        }
+
+        .mc-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0.4;
+            transition: 0.3s;
+        }
+        .mc-panel.active { opacity: 1; transform: scale(1.05); }
+        .mc-panel.active .mc-name { color: var(--accent-primary); text-shadow: 0 0 10px var(--accent-primary); }
+
+        .mc-name { font-weight: bold; font-size: 1.2rem; margin-bottom: 5px; }
+        .mc-indicator { width: 10px; height: 10px; background: #333; border-radius: 50%; margin-top: 5px; }
+        .active .mc-indicator { background: var(--accent-primary); box-shadow: 0 0 8px var(--accent-primary); }
+
+        #main-timer {
+            font-family: var(--font-display);
+            font-size: 3.5rem;
+            width: 140px;
+            text-align: center;
+            color: #fff;
+        }
+        #main-timer.warning { color: var(--danger); animation: pulse 0.5s infinite; }
+
+        /* --- Controls --- */
+        #controls {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            background: #000;
+        }
+
+        .ctrl-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.2s;
+            color: white;
+        }
+
+        #btn-play { background: var(--accent-primary); color: #000; }
+        #btn-reset { background: #333; }
+        #btn-switch { background: #333; border: 1px solid #555; }
+        #btn-next-word { background: var(--accent-secondary); font-size: 1.2rem; }
+
+        .ctrl-btn:active { transform: scale(0.9); }
+
+        /* --- Settings Modal --- */
+        #settings-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: var(--panel-bg);
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid #333;
+        }
+        .setting-row { margin-bottom: 15px; }
+        .setting-row label { display: block; margin-bottom: 5px; color: var(--text-dim); }
+        .setting-row input, .setting-row select {
+            width: 100%; padding: 10px; background: #000; border: 1px solid #444; color: white; border-radius: 5px;
+        }
+        .modal-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
+        .btn-save { background: var(--accent-primary); border: none; padding: 10px 20px; color: black; font-weight: bold; border-radius: 5px; cursor: pointer; }
+
+        /* --- Animations --- */
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .new-word-anim { animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        /* Responsive */
+        @media (max-width: 400px) {
+            #word-display { font-size: 2.5rem; }
+            #main-timer { font-size: 2.5rem; width: 100px; }
+            .mc-name { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">Configuration</h2>
+            <div class="setting-row">
+                <label data-i18n="mc1">MC 1 Name</label>
+                <input type="text" id="cfg-mc1" value="MC Alpha">
+            </div>
+            <div class="setting-row">
+                <label data-i18n="mc2">MC 2 Name</label>
+                <input type="text" id="cfg-mc2" value="MC Beta">
+            </div>
+            <div class="setting-row">
+                <label data-i18n="roundTime">Round Time (seconds)</label>
+                <input type="number" id="cfg-time" value="60">
+            </div>
+            <div class="setting-row">
+                <label data-i18n="wordInterval">Auto-Word Interval (Practice Mode)</label>
+                <input type="number" id="cfg-interval" value="10">
+            </div>
+            <div class="setting-row">
+                <label data-i18n="voice">Voice / TTS</label>
+                <select id="cfg-voice"><option value="on">On</option><option value="off">Off</option></select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-save" id="btn-save-cfg" data-i18n="save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <header>
+        <h1>RapTimer<span style="color:var(--text-dim); font-size:0.5em;"> v1.0</span></h1>
+        <div class="top-controls">
+            <button class="icon-btn lang-switch" id="lang-toggle">ES</button>
+            <button class="icon-btn" id="btn-settings">⚙️</button>
+        </div>
+    </header>
+
+    <!-- Mode Slider -->
+    <div id="mode-selector">
+        <button class="mode-btn active" data-mode="easy" data-i18n="easy">Easy</button>
+        <button class="mode-btn" data-mode="hard" data-i18n="hard">Hard</button>
+        <button class="mode-btn" data-mode="theme" data-i18n="theme">Theme</button>
+        <button class="mode-btn" data-mode="intl" data-i18n="intl">Global</button>
+        <button class="mode-btn" data-mode="practice" data-i18n="practice">Practice Flow</button>
+    </div>
+
+    <!-- Stage Area -->
+    <div id="stage-area">
+        <div id="word-display">FREESTYLE</div>
+        <div id="word-meta">PRESS PLAY TO START</div>
+    </div>
+
+    <!-- Battle Area -->
+    <div id="battle-area">
+        <div class="mc-panel active" id="panel-mc1">
+            <div class="mc-name" id="display-mc1">MC A</div>
+            <div class="mc-indicator"></div>
+        </div>
+        
+        <div id="main-timer">00:00</div>
+        
+        <div class="mc-panel" id="panel-mc2">
+            <div class="mc-name" id="display-mc2">MC B</div>
+            <div class="mc-indicator"></div>
+        </div>
+    </div>
+
+    <!-- Footer Controls -->
+    <div id="controls">
+        <button class="ctrl-btn" id="btn-reset" title="Reset">↺</button>
+        <button class="ctrl-btn" id="btn-play" title="Play/Pause">▶</button>
+        <button class="ctrl-btn" id="btn-next-word" title="New Word">⚡</button>
+        <button class="ctrl-btn" id="btn-switch" title="Switch Turn">⇄</button>
+    </div>
+
+    <script>
+        /**
+         * 🎤 RAP BATTLE TIMER - DATA & LOGIC
+         * Zero dependencies. Vanilla JS.
+         */
+
+        // --- 1. DATA: WORD BANK ---
+        const WORD_BANK = [
+            // ES - Easy
+            { text: "Calle", lang: "es", type: "easy", cat: "urban" },
+            { text: "Micrófono", lang: "es", type: "easy", cat: "urban" },
+            { text: "Ritmo", lang: "es", type: "easy", cat: "music" },
+            { text: "Escenario", lang: "es", type: "easy", cat: "general" },
+            { text: "Dinero", lang: "es", type: "easy", cat: "urban" },
+            { text: "Respeto", lang: "es", type: "easy", cat: "value" },
+            
+            // ES - Hard
+            { text: "Metamorfosis", lang: "es", type: "hard", cat: "complex" },
+            { text: "Idiosincrasia", lang: "es", type: "hard", cat: "complex" },
+            { text: "Paradigma", lang: "es", type: "hard", cat: "complex" },
+            { text: "Efervescente", lang: "es", type: "hard", cat: "complex" },
+            { text: "Jurisdicción", lang: "es", type: "hard", cat: "complex" },
+            
+            // Themes (Temáticas)
+            { text: "El fin del mundo", lang: "es", type: "theme", cat: "situation" },
+            { text: "Redes Sociales", lang: "es", type: "theme", cat: "modern" },
+            { text: "Política Corrupta", lang: "es", type: "theme", cat: "social" },
+            { text: "La vida en el barrio", lang: "es", type: "theme", cat: "urban" },
+
+            // EN - Easy
+            { text: "Flow", lang: "en", type: "easy", cat: "urban" },
+            { text: "Skill", lang: "en", type: "easy", cat: "skill" },
+            { text: "Battle", lang: "en", type: "easy", cat: "urban" },
+            { text: "Power", lang: "en", type: "easy", cat: "value" },
+            
+            // EN - Hard
+            { text: "Underground", lang: "en", type: "hard", cat: "urban" },
+            { text: "Consciousness", lang: "en", type: "hard", cat: "complex" },
+            { text: "Lyrics", lang: "en", type: "hard", cat: "music" },
+            { text: "Punchline", lang: "en", type: "hard", cat: "tech" },
+            
+            // Global / International Phrases
+            { text: "Arrivederci", lang: "it", type: "intl", cat: "global" },
+            { text: "Auf Wiedersehen", lang: "de", type: "intl", cat: "global" },
+            { text: "Bon Voyage", lang: "fr", type: "intl", cat: "global" },
+            { text: "Ciao", lang: "it", type: "intl", cat: "global" },
+            { text: "Olé", lang: "es", type: "intl", cat: "global" },
+            { text: "Hustle", lang: "en", type: "intl", cat: "slang" },
+            { text: "Mic Drop", lang: "en", type: "intl", cat: "slang" },
+            { text: "Cypher", lang: "en", type: "intl", cat: "slang" },
+            { text: "Acapella", lang: "it", type: "intl", cat: "music" },
+            { text: "Carpe Diem", lang: "la", type: "intl", cat: "latin" },
+            { text: "Deja Vu", lang: "fr", type: "intl", cat: "global" },
+            { text: "Hakuna Matata", lang: "sw", type: "intl", cat: "global" }
+        ];
+
+        // --- 2. LOCALIZATION ---
+        const I18N = {
+            es: {
+                easy: "Fácil", hard: "Difícil", theme: "Temática", intl: "Mundial", practice: "Práctica",
+                mc1: "Nombre MC 1", mc2: "Nombre MC 2", roundTime: "Tiempo de Ronda (s)",
+                wordInterval: "Intervalo Auto (Práctica)", voice: "Voz / Lectura", save: "Guardar",
+                startMsg: "DALE AL PLAY", pauseMsg: "PAUSA", endMsg: "TIEMPO FUERA",
+                mode_easy: "Modo Fácil", mode_hard: "Modo Difícil", mode_theme: "Temática", mode_intl: "Internacional", mode_practice: "Entrenamiento"
+            },
+            en: {
+                easy: "Easy", hard: "Hard", theme: "Theme", intl: "Global", practice: "Practice",
+                mc1: "MC 1 Name", mc2: "MC 2 Name", roundTime: "Round Time (s)",
+                wordInterval: "Auto Interval (Practice)", voice: "Voice / TTS", save: "Save",
+                startMsg: "PRESS PLAY", pauseMsg: "PAUSED", endMsg: "TIME UP",
+                mode_easy: "Easy Mode", mode_hard: "Hard Mode", mode_theme: "Thematic", mode_intl: "International", mode_practice: "Training"
+            }
+        };
+
+        // --- 3. STATE MANAGEMENT ---
+        const State = {
+            config: {
+                mc1: "MC Alpha",
+                mc2: "MC Omega",
+                time: 60,
+                interval: 10,
+                voice: "on",
+                lang: "es" // Interface language
+            },
+            currentMode: "easy",
+            activeMC: 1, // 1 or 2
+            timeLeft: 60,
+            isPlaying: false,
+            timerId: null,
+            autoWordId: null,
+            lastWordIndex: -1
+        };
+
+        // --- 4. DOM ELEMENTS ---
+        const els = {
+            displayWord: document.getElementById('word-display'),
+            displayMeta: document.getElementById('word-meta'),
+            timer: document.getElementById('main-timer'),
+            btnPlay: document.getElementById('btn-play'),
+            btnReset: document.getElementById('btn-reset'),
+            btnSwitch: document.getElementById('btn-switch'),
+            btnNext: document.getElementById('btn-next-word'),
+            panelMc1: document.getElementById('panel-mc1'),
+            panelMc2: document.getElementById('panel-mc2'),
+            nameMc1: document.getElementById('display-mc1'),
+            nameMc2: document.getElementById('display-mc2'),
+            modeBtns: document.querySelectorAll('.mode-btn'),
+            settingsModal: document.getElementById('settings-modal'),
+            btnSettings: document.getElementById('btn-settings'),
+            btnSaveCfg: document.getElementById('btn-save-cfg'),
+            langToggle: document.getElementById('lang-toggle'),
+            // Inputs
+            inMc1: document.getElementById('cfg-mc1'),
+            inMc2: document.getElementById('cfg-mc2'),
+            inTime: document.getElementById('cfg-time'),
+            inInterval: document.getElementById('cfg-interval'),
+            inVoice: document.getElementById('cfg-voice')
+        };
+
+        // --- 5. INITIALIZATION ---
+        function init() {
+            loadSettings();
+            applyLanguage();
+            resetBattle();
+            
+            // Events
+            els.btnPlay.addEventListener('click', togglePlay);
+            els.btnReset.addEventListener('click', resetBattle);
+            els.btnSwitch.addEventListener('click', switchTurn);
+            els.btnNext.addEventListener('click', () => generateWord(true));
+            els.btnSettings.addEventListener('click', () => els.settingsModal.style.display = 'flex');
+            els.btnSaveCfg.addEventListener('click', saveSettings);
+            els.langToggle.addEventListener('click', switchLanguage);
+
+            els.modeBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => setMode(e.target.dataset.mode));
+            });
+
+            // Close modal on outside click
+            els.settingsModal.addEventListener('click', (e) => {
+                if(e.target === els.settingsModal) els.settingsModal.style.display = 'none';
+            });
+        }
+
+        // --- 6. CORE LOGIC ---
+
+        function togglePlay() {
+            if (State.isPlaying) {
+                pauseGame();
+            } else {
+                startGame();
+            }
+        }
+
+        function startGame() {
+            if (State.timeLeft <= 0) return;
+            
+            State.isPlaying = true;
+            els.btnPlay.innerHTML = "❚❚"; // Pause icon
+            els.displayWord.style.opacity = "1";
+            
+            // Start Timer
+            State.timerId = setInterval(() => {
+                State.timeLeft--;
+                updateTimerDisplay();
+                
+                if (State.timeLeft <= 0) {
+                    endRound();
+                }
+            }, 1000);
+
+            // Handle Practice Mode (Auto Word Generation)
+            if (State.currentMode === 'practice') {
+                // Generate first word immediately if none
+                if(els.displayWord.innerText === "FREESTYLE" || els.displayWord.innerText === I18N[State.config.lang].startMsg) {
+                    generateWord();
+                }
+                clearInterval(State.autoWordId);
+                State.autoWordId = setInterval(() => {
+                    generateWord();
+                }, State.config.interval * 1000);
+            } else {
+                // Normal modes: generate word if we are at start state
+                if (els.displayWord.innerText === "FREESTYLE" || els.displayWord.innerText === I18N[State.config.lang].startMsg) {
+                    generateWord();
+                }
+            }
+        }
+
+        function pauseGame() {
+            State.isPlaying = false;
+            els.btnPlay.innerHTML = "▶";
+            els.displayMeta.innerText = I18N[State.config.lang].pauseMsg;
+            clearInterval(State.timerId);
+            clearInterval(State.autoWordId);
+        }
+
+        function endRound() {
+            pauseGame();
+            State.timeLeft = 0;
+            updateTimerDisplay();
+            els.displayWord.innerText = I18N[State.config.lang].endMsg;
+            playSound('end');
+        }
+
+        function resetBattle() {
+            pauseGame();
+            State.timeLeft = State.config.time;
+            State.activeMC = 1;
+            updateTimerDisplay();
+            updateActivePanel();
+            els.displayWord.innerText = "FREESTYLE";
+            els.displayMeta.innerText = I18N[State.config.lang].startMsg;
+            els.timer.classList.remove('warning');
+        }
+
+        function switchTurn() {
+            State.activeMC = (State.activeMC === 1) ? 2 : 1;
+            State.timeLeft = State.config.time; // Reset time for next MC
+            updateActivePanel();
+            updateTimerDisplay();
+            // Optional: Auto pause or auto continue? Let's keep playing if playing.
+            if(State.isPlaying) {
+                // flash effect
+                els.timer.style.color = 'var(--accent-primary)';
+                setTimeout(() => els.timer.style.color = '', 300);
+            }
+        }
+
+        function setMode(mode) {
+            State.currentMode = mode;
+            // UI Update
+            els.modeBtns.forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+            
+            // Show mode name in meta
+            const labelKey = `mode_${mode}`;
+            els.displayMeta.innerText = I18N[State.config.lang][labelKey] || mode.toUpperCase();
+            
+            if (State.isPlaying && mode !== 'practice') {
+                clearInterval(State.autoWordId);
+            } else if (State.isPlaying && mode === 'practice') {
+                generateWord();
+                State.autoWordId = setInterval(generateWord, State.config.interval * 1000);
+            }
+        }
+
+        function generateWord(manualClick = false) {
+            let pool = [];
+
+            // Filter logic based on mode
+            if (State.currentMode === 'easy') {
+                pool = WORD_BANK.filter(w => w.type === 'easy' && (w.lang === State.config.lang || w.lang === 'es')); // Fallback es
+            } else if (State.currentMode === 'hard') {
+                pool = WORD_BANK.filter(w => w.type === 'hard' && (w.lang === State.config.lang || w.lang === 'es'));
+            } else if (State.currentMode === 'theme') {
+                pool = WORD_BANK.filter(w => w.type === 'theme');
+            } else if (State.currentMode === 'intl') {
+                pool = WORD_BANK.filter(w => w.type === 'intl'); // Only international
+            } else if (State.currentMode === 'practice') {
+                // Mix of everything for practice
+                pool = WORD_BANK; 
+            }
+
+            // Fallback if pool is empty (e.g., lang mismatch)
+            if (pool.length === 0) pool = WORD_BANK;
+
+            // Pick random
+            const randIndex = Math.floor(Math.random() * pool.length);
+            const wordObj = pool[randIndex];
+
+            // Render
+            els.displayWord.innerText = wordObj.text;
+            
+            // Animation reset
+            els.displayWord.classList.remove('new-word-anim');
+            void els.displayWord.offsetWidth; // trigger reflow
+            els.displayWord.classList.add('new-word-anim');
+
+            // Metadata update
+            let metaText = (wordObj.cat || "").toUpperCase();
+            if (wordObj.lang !== State.config.lang && State.currentMode === 'intl') {
+                metaText += ` [${wordObj.lang.toUpperCase()}]`;
+            }
+            els.displayMeta.innerText = metaText;
+
+            // TTS
+            if (State.config.voice === 'on') {
+                speak(wordObj.text, wordObj.lang);
+            }
+        }
+
+        // --- 7. HELPER FUNCTIONS ---
+
+        function updateTimerDisplay() {
+            const m = Math.floor(State.timeLeft / 60);
+            const s = State.timeLeft % 60;
+            els.timer.innerText = `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+            
+            if (State.timeLeft <= 10) {
+                els.timer.classList.add('warning');
+            } else {
+                els.timer.classList.remove('warning');
+            }
+        }
+
+        function updateActivePanel() {
+            if (State.activeMC === 1) {
+                els.panelMc1.classList.add('active');
+                els.panelMc2.classList.remove('active');
+            } else {
+                els.panelMc2.classList.add('active');
+                els.panelMc1.classList.remove('active');
+            }
+        }
+
+        function speak(text, langCode) {
+            if (!('speechSynthesis' in window)) return;
+            
+            // Cancel previous
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1;
+            utterance.pitch = 1;
+            
+            // Try to set correct voice lang
+            // Map 'es' to 'es-ES', 'en' to 'en-US', etc.
+            const langMap = { 'es': 'es-ES', 'en': 'en-US', 'it': 'it-IT', 'fr': 'fr-FR', 'de': 'de-DE' };
+            utterance.lang = langMap[langCode] || 'en-US';
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function playSound(type) {
+            // Simple oscillator beep for "Time's up"
+            if(type === 'end') {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.5);
+                osc.connect(ctx.destination);
+                osc.start();
+                osc.stop(0.5);
+            }
+        }
+
+        // --- 8. PERSISTENCE & SETTINGS ---
+
+        function saveSettings() {
+            State.config.mc1 = els.inMc1.value || "MC A";
+            State.config.mc2 = els.inMc2.value || "MC B";
+            State.config.time = parseInt(els.inTime.value) || 60;
+            State.config.interval = parseInt(els.inInterval.value) || 10;
+            State.config.voice = els.inVoice.value;
+
+            localStorage.setItem('rapTimerConfig', JSON.stringify(State.config));
+            
+            // Apply updates
+            els.nameMc1.innerText = State.config.mc1;
+            els.nameMc2.innerText = State.config.mc2;
+            
+            if (!State.isPlaying) {
+                State.timeLeft = State.config.time;
+                updateTimerDisplay();
+            }
+
+            els.settingsModal.style.display = 'none';
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('rapTimerConfig');
+            if (saved) {
+                State.config = { ...State.config, ...JSON.parse(saved) };
+            }
+            
+            // Populate inputs
+            els.inMc1.value = State.config.mc1;
+            els.inMc2.value = State.config.mc2;
+            els.inTime.value = State.config.time;
+            els.inInterval.value = State.config.interval;
+            els.inVoice.value = State.config.voice;
+            
+            // Update UI
+            els.nameMc1.innerText = State.config.mc1;
+            els.nameMc2.innerText = State.config.mc2;
+        }
+
+        function switchLanguage() {
+            State.config.lang = (State.config.lang === 'es') ? 'en' : 'es';
+            localStorage.setItem('rapTimerConfig', JSON.stringify(State.config));
+            applyLanguage();
+        }
+
+        function applyLanguage() {
+            const lang = State.config.lang;
+            const dict = I18N[lang];
+            
+            els.langToggle.innerText = lang.toUpperCase();
+            
+            // Update elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) el.innerText = dict[key];
+            });
+
+            // Update Start/Pause message if not currently timing words
+            if (!State.isPlaying) {
+                els.displayMeta.innerText = dict.startMsg;
+            }
+        }
+
+        // Run
+        window.onload = init;
+
+    </script>
+</body>
+</html>
